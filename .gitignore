@@ -1,0 +1,8 @@
+.vs/
+TFuse/.vs/
+TFuse/Debug/
+TFuse/gen-cpp/
+TFuse/x64/
+TFuseMem/gen-netstd/
+TFuseMem/obj/
+build/

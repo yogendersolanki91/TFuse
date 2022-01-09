@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>../build/Release_DotNetCore</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>../build/Debug_DotNetCore</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="FuseServiceLocal.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Fuse.thrift" Link="Fuse.thrift" />
+    <None Include="..\TFuse\config.ini" Link="config.ini" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ApacheThrift" Version="0.15.0" />
+    <PackageReference Include="Serilog" Version="2.10.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="4.0.1" />
+  </ItemGroup>
+
+</Project>

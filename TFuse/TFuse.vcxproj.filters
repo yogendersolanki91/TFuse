@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="FuseImpl.cpp" />
+    <ClCompile Include="ThriftClient.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="gen-cpp\Fuse_constants.cpp">
+      <Filter>gen-cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="gen-cpp\Fuse_types.cpp">
+      <Filter>gen-cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="gen-cpp\FuseService.cpp">
+      <Filter>gen-cpp</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FuseImpl.h" />
+    <ClInclude Include="Logger.h" />
+    <ClInclude Include="thriftClient.h" />
+    <ClInclude Include="gen-cpp\Fuse_constants.h">
+      <Filter>gen-cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="gen-cpp\Fuse_types.h">
+      <Filter>gen-cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="gen-cpp\FuseService.h">
+      <Filter>gen-cpp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="config.ini" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Fuse.thrift" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="gen-cpp">
+      <UniqueIdentifier>{99fcc32b-9d14-44f4-a46f-a2d98d59974d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
