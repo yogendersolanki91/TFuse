@@ -1,4 +1,4 @@
-#include "thriftClient.h"
+#include "thrift_client.h"
 
 #include <boost/algorithm/string.hpp>
 #include <iterator>
@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
-#include "Logger.h"
+#include "logger.h"
 
 using namespace std;
 
-ThriftClient::ThriftClient(const std::string& targetPath,
+thrift_client::thrift_client(const std::string& targetPath,
     const std::string& serviceLoc,
     TransportType type,
     MessageWrap wrap,
@@ -23,7 +23,7 @@ ThriftClient::ThriftClient(const std::string& targetPath,
     transportWrapper = wrap;
     encodingProtocol = protocol;
 
-   // Inititalize location
+    // Inititalize location
     servicePath = serviceLoc;
     target = targetPath;
 
@@ -45,27 +45,23 @@ ThriftClient::ThriftClient(const std::string& targetPath,
         host = splitStr[0];
     }
 
- 
-
-    // Create a low level transport
     LOG_INFO << "Initialzing Named Pipe transport " << target;
-    InitLowLevelTransport();
+    init_low_level_transport();
 
-    // init message wrapping/buffering
     LOG_INFO << "Initialzing message wrapping for communication";
-    InitTransportWrapper();
+    init_transport_wrapper();
 
-    //init serialization/encoding method
+
     LOG_INFO << "Initialzing message endcoding for communication";
-    InitEncodingProtocol();
+    init_encoding_protocol();
 }
 
-void ThriftClient::HandleException(std::exception& ex)
+void thrift_client::HandleException(std::exception& ex)
 {
     LOG_ERROR << "IPC Exception " << ex.what();
 }
 
-void ThriftClient::InitLowLevelTransport()
+void thrift_client::init_low_level_transport()
 {
     switch (lowLevelTransport) {
 #ifdef _WIN32
@@ -90,7 +86,7 @@ void ThriftClient::InitLowLevelTransport()
     }
 }
 
-void ThriftClient::InitTransportWrapper()
+void thrift_client::init_transport_wrapper()
 {
     switch (transportWrapper) {
     case MessageWrap::BUFFERED:
@@ -128,7 +124,7 @@ void ThriftClient::InitTransportWrapper()
     }
 }
 
-void ThriftClient::InitEncodingProtocol()
+void thrift_client::init_encoding_protocol()
 {
     switch (encodingProtocol) {
     case SerializationProtocol::BINARY:
@@ -148,7 +144,7 @@ void ThriftClient::InitEncodingProtocol()
     }
 }
 
-void ThriftClient::Connect()
+void thrift_client::Connect()
 {
     LOG_INFO << "Creating fileystem stub";
     _stub.reset(new Fuse::FuseServiceClient(protocol));

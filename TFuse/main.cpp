@@ -2,10 +2,10 @@
 // begins and ends there.
 //
 
-#include "FuseImpl.h"
-#include "Logger.h"
+#include "thrift_fuse.h"
+#include "logger.h"
 
-#include "thriftClient.h"
+#include "thrift_client.h"
 #include <iostream>
 #include <memory>
 
@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 
     boost::property_tree::ptree pt;
     boost::property_tree::ini_parser::read_ini("config.ini", pt);
-
+    std::shared_ptr<thrift_client> client;
     try {
         auto thriftConfig = pt.get_child("THRIFT");
 
@@ -37,9 +37,9 @@ int main(int argc, char* argv[])
             return -1;
         }
 
-        TransportType type = ThriftClient::TransportTypeFromString(thriftConfig.get<std::string>("TRANSPORT"));
-        MessageWrap wrap = ThriftClient::WrapTypeFromString(thriftConfig.get<std::string>("WRAPPER", "BUFFERED"));
-        SerializationProtocol protocol = ThriftClient::ProtocolTypeFromString(thriftConfig.get<std::string>("PROTOCOL", "BINARY"));
+        TransportType type = thrift_client::TransportTypeFromString(thriftConfig.get<std::string>("TRANSPORT"));
+        MessageWrap wrap = thrift_client::WrapTypeFromString(thriftConfig.get<std::string>("WRAPPER", "BUFFERED"));
+        SerializationProtocol protocol = thrift_client::ProtocolTypeFromString(thriftConfig.get<std::string>("PROTOCOL", "BINARY"));
                                                                               
         string targetPath = thriftConfig.get<std::string>("TARGET");
         string servicePath;
@@ -53,8 +53,7 @@ int main(int argc, char* argv[])
             }
         }
         
-        std::shared_ptr<ThriftClient> client(new ThriftClient(targetPath, servicePath, type, wrap, protocol));      
-        FuseImpl::SetClient(client);
+        client.reset(new thrift_client(targetPath, servicePath, type, wrap, protocol));             
         try {
             client->Connect();
         } catch (const std::exception& e) {
@@ -68,9 +67,9 @@ int main(int argc, char* argv[])
         LOG_ERROR << "Unknown error while initializing client :" << ex.what();
         return -1;
     }
-
-    FuseImpl::_fsInstance.reset(new FuseImpl());
-    LOG_INFO << "File System retrun " << FuseImpl::_fsInstance->RunFileSystem(argc, argv);
+    
+    auto* fs = new thrift_fuse(client);
+    LOG_INFO << "File System retrun " << fs->thrift_fuse_main(argc, argv);
     int x;
     std::cin >> x;
     return 0;

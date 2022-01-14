@@ -14,17 +14,6 @@ using namespace apache::thrift::transport;
 using namespace apache::thrift::protocol;
 using namespace std;
 
-#define THRIFT_OP(c, expr)                                                               \
-    try {                                                                                \
-        if ((c) == nullptr)                                                              \
-            resp.status = StatusCode::FUSE_ERRECANCELED;                                 \
-        else                                                                             \
-            (c->GetStub()->expr);                                                        \
-    } catch (std::exception & ex) {                                                      \
-        resp.status = StatusCode::FUSE_ERRECANCELED;                                     \
-        LOG_ERROR << __FUNCTION__ << " Operation failed due to exception " << ex.what(); \
-        ThriftClient::HandleException(ex);                                               \
-    }
 
 #define TRANSPORT_PIPE "PIPE"
 #define TRANSPORT_MEM "SHARED_MEMORY"
@@ -63,9 +52,9 @@ enum class SerializationProtocol {
     MULTIPLEXED
 };
 
-class ThriftClient {
+class thrift_client {
 public:
-    ThriftClient(const std::string& target, const std::string& servicePath,
+    thrift_client(const std::string& target, const std::string& servicePath,
         TransportType type,
         MessageWrap wrap,
         SerializationProtocol protocol);
@@ -136,9 +125,9 @@ private:
     SerializationProtocol encodingProtocol;
 
     // Thrift init function
-    void InitLowLevelTransport();
-    void InitTransportWrapper();
-    void InitEncodingProtocol();
+    void init_low_level_transport();
+    void init_transport_wrapper();
+    void init_encoding_protocol();
 
     // Thrift requried fields
     std::shared_ptr<TSocket> socket;

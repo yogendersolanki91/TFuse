@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="FuseImpl.cpp" />
-    <ClCompile Include="ThriftClient.cpp" />
+    <ClCompile Include="thrift_fuse.cpp" />
+    <ClCompile Include="thrift_client.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="gen-cpp\Fuse_constants.cpp">
       <Filter>gen-cpp</Filter>
@@ -13,11 +13,12 @@
     <ClCompile Include="gen-cpp\FuseService.cpp">
       <Filter>gen-cpp</Filter>
     </ClCompile>
+    <ClCompile Include="fuse_native.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FuseImpl.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="thriftClient.h" />
+    <ClInclude Include="thrift_fuse.h" />
+    <ClInclude Include="logger.h" />
+    <ClInclude Include="thrift_client.h" />
     <ClInclude Include="gen-cpp\Fuse_constants.h">
       <Filter>gen-cpp</Filter>
     </ClInclude>
@@ -27,6 +28,7 @@
     <ClInclude Include="gen-cpp\FuseService.h">
       <Filter>gen-cpp</Filter>
     </ClInclude>
+    <ClInclude Include="fuse_native.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="config.ini" />

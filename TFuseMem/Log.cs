@@ -58,7 +58,7 @@ namespace TFuse
                     var method = stack.GetMethod();
                     if (method.DeclaringType.Assembly != typeof(Log).Assembly)
                     {
-                        var caller = $"{method.DeclaringType.FullName}.{method.Name}";
+                        var caller = $"{method.DeclaringType.Name}.{method.Name}";
                         logEvent.AddPropertyIfAbsent(new LogEventProperty("Caller", new ScalarValue(caller)));
                     }
 

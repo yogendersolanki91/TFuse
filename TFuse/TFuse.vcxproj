@@ -166,20 +166,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FuseImpl.cpp" />
+    <ClCompile Include="thrift_fuse.cpp" />
+    <ClCompile Include="fuse_native.cpp" />
     <ClCompile Include="gen-cpp\FuseService.cpp" />
     <ClCompile Include="gen-cpp\Fuse_constants.cpp" />
     <ClCompile Include="gen-cpp\Fuse_types.cpp" />
-    <ClCompile Include="ThriftClient.cpp" />
+    <ClCompile Include="thrift_client.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FuseImpl.h" />
+    <ClInclude Include="thrift_fuse.h" />
+    <ClInclude Include="fuse_native.h" />
     <ClInclude Include="gen-cpp\FuseService.h" />
     <ClInclude Include="gen-cpp\Fuse_constants.h" />
     <ClInclude Include="gen-cpp\Fuse_types.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="thriftClient.h" />
+    <ClInclude Include="logger.h" />
+    <ClInclude Include="thrift_client.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Fuse.thrift" />
