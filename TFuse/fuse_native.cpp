@@ -65,7 +65,7 @@ private:
 
 int fuse_native::getattr(const char* path, fuse_stat* stbuf, fuse_file_info* fi)
 {
-    LOG_DEBUG << "Called " << __FUNCTION__ << " Path " << path;
+    LOG_DEBUG << "Called " << " Path " << path;
     FileSystemResponse resp;
 
     FuseHandleInfo handle;
@@ -79,7 +79,7 @@ int fuse_native::getattr(const char* path, fuse_stat* stbuf, fuse_file_info* fi)
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS && resp.__isset.stats) {
         thrift_fuse::t2fFileStat(resp.stats, stbuf);
     } else {
-        LOG_ERROR << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -96,7 +96,7 @@ int fuse_native::readlink(const char* path, char* buf, size_t size)
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         strncpy(buf, resp.linkPath.c_str(), size);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -112,7 +112,7 @@ int fuse_native::mknod(const char* path, fuse_mode_t mode, fuse_dev_t dev)
     THRIFT_OP(mknod, resp, path, mode, dev, context);
 
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -127,7 +127,7 @@ int fuse_native::mkdir(const char* path, fuse_mode_t mode)
 
     THRIFT_OP(mkdir, resp, path, mode, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -142,7 +142,7 @@ int fuse_native::unlink(const char* path)
 
     THRIFT_OP(unlink, resp, path, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -157,7 +157,7 @@ int fuse_native::rmdir(const char* path)
 
     THRIFT_OP(rmdir, resp, path, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -172,7 +172,7 @@ int fuse_native::symlink(const char* dstpath, const char* srcpath)
 
     THRIFT_OP(symlink, resp, dstpath, srcpath, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << srcpath << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << srcpath << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -187,7 +187,7 @@ int fuse_native::rename(const char* oldpath, const char* newpath, unsigned int f
 
     THRIFT_OP(rename, resp, oldpath, newpath, flags, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << oldpath << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << oldpath << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -202,7 +202,7 @@ int fuse_native::link(const char* srcpath, const char* dstpath)
 
     THRIFT_OP(link, resp, srcpath, dstpath, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << srcpath << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << srcpath << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -223,7 +223,7 @@ int fuse_native::chown(const char* path,
 
     THRIFT_OP(chown, resp, path, uid, gid, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -243,7 +243,7 @@ int fuse_native::chmod(const char* path, fuse_mode_t mode, fuse_file_info* fi)
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -263,7 +263,7 @@ int fuse_native::truncate(const char* path, fuse_off_t size, fuse_file_info* fi)
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -280,7 +280,7 @@ int fuse_native::open(const char* path, fuse_file_info* fi)
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -302,11 +302,16 @@ int fuse_native::read(const char* path,
 
     THRIFT_OP(read, resp, path, size, off, handle, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
-        strncpy(buf, resp.data.c_str(), resp.data.size());
+        if (resp.__isset.data) { 
+            memcpy(buf, resp.data.c_str(), resp.data.size());
+        } else {
+            return 0;
+        }
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
+        return resp.status;
     }
-    return resp.status;
+    return resp.data.size();
 }
 
 int fuse_native::write(const char* path,
@@ -328,9 +333,9 @@ int fuse_native::write(const char* path,
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         return static_cast<int>(resp.dataWritten);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
-    return resp.status;
+    return resp.dataWritten;
 }
 
 int fuse_native::statfs(const char* path, fuse_statvfs* stbuf)
@@ -345,7 +350,7 @@ int fuse_native::statfs(const char* path, fuse_statvfs* stbuf)
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fStatFS(resp.statfs, stbuf);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -363,7 +368,7 @@ int fuse_native::flush(const char* path, fuse_file_info* fi)
 
     THRIFT_OP(flush, resp, path, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -379,9 +384,9 @@ int fuse_native::release(const char* path, fuse_file_info* fi)
     FuseContext context;
     thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(release, resp, path, handle, context);
+    THRIFT_OP(release, resp, path == nullptr ? "" : std::string(path), handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -389,20 +394,23 @@ int fuse_native::release(const char* path, fuse_file_info* fi)
 int fuse_native::create(const char* path, fuse_mode_t mode, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
-    return 0;
+    FileSystemResponse resp;
+
+    FuseHandleInfo handle;
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
+
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(create, resp, path, mode, context);
+
+    if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
+    }
+    return resp.status;
 }
 
-int fuse_native::lock(const char* path, fuse_file_info* fi, int cmd, fuse_flock* flock)
-{
-    LOG_DEBUG << "Called " << __FUNCTION__;
-    return 0;
-}
 
-int fuse_native::bmap(const char* path, size_t blocksize, uint64_t* idx)
-{
-    LOG_DEBUG << "Called " << __FUNCTION__;
-    return 0;
-}
 
 int fuse_native::setxattr(const char* path,
     const char* name0,
@@ -419,7 +427,7 @@ int fuse_native::setxattr(const char* path,
 
     THRIFT_OP(setxattr, resp, path, name0, value, size, flags, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -442,23 +450,13 @@ int fuse_native::getxattr(const char* path,
             return StatusCode::FUSE_ERRORENOMEM;
         }
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
 
-int fuse_native::listxattr(const char* path, char* namebuf, size_t size)
-{
-    LOG_DEBUG << "Called " << __FUNCTION__;
-    // TODO:: fix it.
-    return StatusCode::FUSE_ERROREPERM;
-}
 
-int fuse_native::removexattr(const char* path, const char* name0)
-{
-    LOG_DEBUG << "Called " << __FUNCTION__;
-    return StatusCode::FUSE_ERROREPERM;
-}
+
 
 int fuse_native::opendir(const char* path, fuse_file_info* fi)
 {
@@ -472,7 +470,7 @@ int fuse_native::opendir(const char* path, fuse_file_info* fi)
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -503,7 +501,7 @@ int fuse_native::readdir(const char* path,
             }
         }
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -521,7 +519,7 @@ int fuse_native::releasedir(const char* path, fuse_file_info* fi)
 
     THRIFT_OP(releasedir, resp, path, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -545,7 +543,7 @@ int fuse_native::utimens(const char* path,
 
     THRIFT_OP(utimens, resp, path, timeSpec, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -565,7 +563,7 @@ int fuse_native::fsync(const char* path, int datasync, fuse_file_info* fi)
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(handle, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -585,7 +583,7 @@ int fuse_native::fsyncdir(const char* path, int datasync, fuse_file_info* fi)
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(handle, fi);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -598,9 +596,42 @@ int fuse_native::access(const char* path, int flag)
     FuseContext context;
     thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    //THRIFT_OP(static_cast<FuseImpl*>(fuse_get_context()->private_data())->;, access, resp, path, static_cast<FuseAccessMode::type>(flag), context);
+    THRIFT_OP(access, resp, path, static_cast<FuseAccessMode::type>(flag), context);
+
+    if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {        
+        LOG_DEBUG << "Failed "
+                  << " Path " << path << "Error " << resp.status;
+    }
     return 0;
 }
+
+// Todo:: need to be implemented
+int fuse_native::removexattr(const char* path, const char* name0)
+{
+    LOG_DEBUG << "Called " << __FUNCTION__;
+    return StatusCode::FUSE_ERROREPERM;
+}
+
+int fuse_native::listxattr(const char* path, char* namebuf, size_t size)
+{
+    LOG_DEBUG << "Called " << __FUNCTION__;
+    // TODO:: fix it.
+    return StatusCode::FUSE_ERROREPERM;
+}
+
+int fuse_native::lock(const char* path, fuse_file_info* fi, int cmd, fuse_flock* flock)
+{
+    LOG_DEBUG << "Called " << __FUNCTION__;
+    return 0;
+}
+
+int fuse_native::bmap(const char* path, size_t blocksize, uint64_t* idx)
+{
+    LOG_DEBUG << "Called " << __FUNCTION__;
+    return 0;
+}
+
+
 
 void fuse_native::destroy(void* fuse)
 {

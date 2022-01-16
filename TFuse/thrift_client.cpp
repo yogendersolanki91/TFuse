@@ -37,8 +37,7 @@ thrift_client::thrift_client(const std::string& targetPath,
     MessageWrap wrap,
     SerializationProtocol protocol, int id)
 {
-    LOG_INFO << " Initializing filesystem"
-             << " Client Type = " << static_cast<int>(type) << ", Serialization = " << static_cast<int>(protocol) << ", Message Wrapping = " << static_cast<int>(wrap) << ", Target = " << targetPath << ", ServiceLocation = " << servicePath;
+  
 
     lowLevelTransport = type;
     transportWrapper = wrap;
@@ -66,13 +65,16 @@ thrift_client::thrift_client(const std::string& targetPath,
         host = splitStr[0];
     }
     _clientId = "channel[" + to_string(id) + "]";
-    LOG_INFO << _clientId << " Initialzing Named Pipe transport " << target;
+
+    LOG_INFO << " Initializing filesystem channel " << _clientId
+             << " Client Type [" << static_cast<int>(type) << "]"
+             << " Serialization [" << static_cast<int>(protocol) << "]"
+             << " Message Wrapping [" << static_cast<int>(wrap) << "]"
+             << " Target [" << targetPath << "]"
+             << " ServiceLocation " << servicePath;
+
     init_low_level_transport();
-
-    LOG_INFO << _clientId << " Initialzing message wrapping for communication";
     init_transport_wrapper();
-
-    LOG_INFO << _clientId << " Initialzing message endcoding for communication";
     init_encoding_protocol();
 }
 
@@ -172,8 +174,7 @@ void thrift_client::init_encoding_protocol()
 }
 
 void thrift_client::connect()
-{
-    LOG_INFO << _clientId << " Creating fileystem stub";
+{   
     _stub =  make_shared<Fuse::FuseServiceClient>(protocol);
 
     LOG_INFO << _clientId << " Opening transport channel " << target;

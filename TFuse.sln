@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{3D54E4AF-5465-4442-9DA6-711B2D227EC3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TFuseMem", "TFuseMem\TFuseMem.csproj", "{A2D5422B-2F2E-4EC1-861A-03FC263C79A0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BB96D78B-C398-4856-A6A4-0757CB0CCD5D} = {BB96D78B-C398-4856-A6A4-0757CB0CCD5D}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TFuse", "TFuse\TFuse.vcxproj", "{BB96D78B-C398-4856-A6A4-0757CB0CCD5D}"
 EndProject

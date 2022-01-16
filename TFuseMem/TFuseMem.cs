@@ -47,26 +47,27 @@ namespace TFuse
         public string Link { get; private set; }
         public string Name { get; set; }
         public int refCount;
-        MemoryStream data;
+        MemoryStream dataStream;
         ConcurrentDictionary<string, MemNode> Child { get; set; } = new ConcurrentDictionary<string, MemNode>();
         public FuseStat FileStat { get; private set; }
 
         public bool IsDirectory { get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFDIR; } }
         public bool IsLink { get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFLNK; } } 
+        public int DataSize => (int)(dataStream != null ? dataStream.Length : 0); 
         
 
         public MemNode(string name, FuseStat stat)
         {
             FileStat = stat;
             Name = name;
-            data = new MemoryStream();
+            dataStream = new MemoryStream();
         }
 
         public MemNode(string name, FuseStat stat, string link)
         {
             FileStat = stat;
             Name = name;
-            data = new MemoryStream();
+            dataStream = new MemoryStream();
             Link = link;
         }
 
@@ -74,22 +75,42 @@ namespace TFuse
         {
             FileStat = stat;
             Name = name;
-            data = new MemoryStream(size);
+            dataStream = new MemoryStream(size);
         }
 
         public void Resize(long size)
         {
-            data.Capacity = (int)size;
+            dataStream.Capacity = (int)size;
             FileStat.Size = size;
         }
 
         public int Read(byte[] data, int offset, int size)
         {
-            return 0;
+            if (data != null)
+            {
+                lock(data)
+                {
+                    Log.Logger.Information($"Reading at {offset} for {size} byte Buffer {data.Length}");
+                    dataStream.Seek(offset, SeekOrigin.Begin);
+                    dataStream.Read(data, 0, data.Length);
+                    return size;
+                }
+            }            
+            return 0;            
         }
 
         public int Write(byte[] data, int offset, int size)
         {
+            if (data != null)
+            {
+                lock (data)
+                {
+                    Log.Logger.Information($"Writing at {offset} for {size} byte Buffer {data.Length}");
+                    dataStream.Seek(offset, SeekOrigin.Begin);
+                    dataStream.Write(data, 0, data.Length);
+                    return size;
+                }
+            }
             return 0;
         }
 
@@ -335,7 +356,13 @@ namespace TFuse
         public Task<FileSystemResponse> createAsync(string path, int mode, FuseContext context, CancellationToken cancellationToken = default)
         {
             Log.Debug($"Request arrived ");
-            throw new NotImplementedException();
+            if ((mode & FuseConstants.FUSE_MODE_MASK_IFMT) != FuseConstants.FUSE_MODE_MASK_IFDIR)
+            {
+                return mknodAsync(path, mode, 0, context, cancellationToken);
+            } else
+            {
+                return mkdirAsync(path, mode,context, cancellationToken);
+            }
         }
 
         public Task destroyAsync(short fsPrivateId, CancellationToken cancellationToken = default)
@@ -445,7 +472,10 @@ namespace TFuse
             }
 
             Log.Debug($"Creating directory {name} in {dir}");
-            node.AddChild(name, new MemNode(name, MemNode.CreateNewDirectoryStat(Interlocked.Increment(ref InodeCount))));
+            var newNode = new MemNode(name, MemNode.CreateNewDirectoryStat(Interlocked.Increment(ref InodeCount)));
+            newNode.FileStat.Uid = context.Uid;
+            newNode.FileStat.Gid = context.Gid;
+            node.AddChild(name, newNode);
             return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
         }
 
@@ -468,8 +498,12 @@ namespace TFuse
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_ERRORENOENT });
             }
 
-            Log.Debug($"Creating directory {name} in {dir}");
-            node.AddChild(name, new MemNode(name, MemNode.CreateNewFileStat(Interlocked.Increment(ref InodeCount))));
+            Log.Debug($"Creating file {name} in {dir}");
+            var newNode = new MemNode(name, MemNode.CreateNewFileStat(Interlocked.Increment(ref InodeCount)));
+            newNode.FileStat.Uid = context.Uid;
+            newNode.FileStat.Gid = context.Gid;            
+            node.AddChild(name, newNode);
+            
             return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
         }
 
@@ -570,8 +604,17 @@ namespace TFuse
             }
             else
             {
-                byte[] data = new byte[size];
-                node.Read(data, (int)offset, size);
+                var readSize = Math.Min(size, node.DataSize - offset);
+
+                if (readSize < 1)
+                {
+                    return Task.FromResult(new FileSystemResponse()
+                    {
+                        Status = StatusCode.FUSE_SUCCESS,                        
+                    });
+                }
+                byte[] data = new byte[Math.Min(size, node.DataSize - offset)];
+                node.Read(data, (int)offset, data.Length);
                 return Task.FromResult(new FileSystemResponse()
                 {
                     Status = StatusCode.FUSE_SUCCESS,

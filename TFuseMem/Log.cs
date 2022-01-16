@@ -106,7 +106,7 @@ namespace TFuse
 
         public static void InitLoggers()
         {
-            Log.Logger = new LoggerConfiguration().MinimumLevel.Debug()
+            Log.Logger = new LoggerConfiguration().MinimumLevel.Information()
                .Enrich.WithCaller()
                .WriteTo.Console(theme: Serilog.Sinks.SystemConsole.Themes.SystemConsoleTheme.Literate, outputTemplate: logOutPut)
                .CreateLogger();
