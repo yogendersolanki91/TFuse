@@ -1,19 +1,39 @@
+/*
+ ***************************************************************************** 
+ * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
+ *
+ * Copyright (c) 2011 Yogender Solanki
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ */
 #pragma once
-#include "gen-cpp/FuseService.h"
-#include "thrift/protocol/TBinaryProtocol.h"
-#include "thrift/protocol/TCompactProtocol.h"
-#include "thrift/protocol/TJSONProtocol.h"
-#include "thrift/transport/TBufferTransports.h"
-#include "thrift/transport/TPipe.h"
-#include "thrift/transport/TTransport.h"
+#include <FuseService.h>
+
+#include <thrift/protocol/TBinaryProtocol.h>
+#include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/protocol/TJSONProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/THttpClient.h>
+#include <thrift/transport/TPipe.h>
 #include <thrift/transport/TSocket.h>
+#include <thrift/transport/TTransport.h>
 #include <thrift/transport/TZlibTransport.h>
 
 using namespace apache::thrift::transport;
 using namespace apache::thrift::protocol;
 using namespace std;
-
 
 #define TRANSPORT_PIPE "PIPE"
 #define TRANSPORT_MEM "SHARED_MEMORY"
@@ -57,7 +77,8 @@ public:
     thrift_client(const std::string& target, const std::string& servicePath,
         TransportType type,
         MessageWrap wrap,
-        SerializationProtocol protocol);
+        SerializationProtocol protocol, int id);
+    ~thrift_client();
 
     static void HandleException(std::exception& ex);
 
@@ -112,7 +133,11 @@ public:
         return _stub;
     }
 
-    void Connect();
+    void connect();
+
+    inline const std::string& get_client_id() {
+        return _clientId;
+    }
 
 private:
     // Thrift options
@@ -134,7 +159,9 @@ private:
     std::shared_ptr<TPipe> pipe;
     std::shared_ptr<TTransport> wrappedTransport;
     std::shared_ptr<TProtocol> protocol;
-
+    string _clientId;
     // Client stub
     std::shared_ptr<Fuse::FuseServiceClient> _stub;
 };
+
+typedef shared_ptr<thrift_client> ThriftClientPtr;

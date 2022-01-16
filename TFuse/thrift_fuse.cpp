@@ -1,11 +1,36 @@
-#include "thrift_fuse.h"
-#include "fuse_native.h"
-#include "logger.h"
+/*
+ ***************************************************************************** 
+ * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
+ *
+ * Copyright (c) 2011 Yogender Solanki
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ */
+
+// Include thirft_fuse first to avoid refdefination error
+#include <thrift_fuse.h>
+
+#include <fuse_native.h>
+#include <logger.h>
+
 
 using namespace Fuse;
 
-thrift_fuse::thrift_fuse(std::shared_ptr<thrift_client> client) {
-    _client = client;
+thrift_fuse::thrift_fuse(blocking_queue<ThriftClientPtr>* clients)
+{
+    _clientQueue = clients;
     ops = {
         fuse_native::getattr,
         fuse_native::readlink,
@@ -59,6 +84,6 @@ bool thrift_fuse::ping_host()
 }
 
 int thrift_fuse::thrift_fuse_main(int argc, char* argv[])
-{   
+{
     return fuse_main(argc, argv, get_operations(), this);
 }

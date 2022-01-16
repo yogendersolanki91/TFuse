@@ -1,40 +1,70 @@
+/*
+ ***************************************************************************** 
+ * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
+ *
+ * Copyright (c) 2011 Yogender Solanki
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ */
 
 
-#include "thrift_client.h"
-#include <FuseService.h>
+#pragma once
+#define _WINSOCKAPI_
 #include <fuse3/fuse.h>
+
+#include <FuseService.h>
+
 #include <memory>
+
+#include <blocking_queue.h>
+#include <thrift_client.h>
 
 using namespace apache::thrift::transport;
 using namespace apache::thrift::protocol;
 
-#define COPY_TO_THRIFT(t, f, field) \
-    if (t->)
-
-#pragma once
 class thrift_fuse {
 private: // private fields
     fuse_operations ops;
-    std::shared_ptr<thrift_client> _client;
+    blocking_queue<ThriftClientPtr>* _clientQueue;
 
 public: // public field
 private: // private function
 public: // non static function
-    thrift_fuse(std::shared_ptr<thrift_client> client);
+    thrift_fuse(blocking_queue<ThriftClientPtr>* clients);
     fuse_operations* get_operations();
     bool ping_host();
     int thrift_fuse_main(int argc, char* argv[]);
-    inline thrift_client* get_tclient()
+
+    inline ThriftClientPtr get_tclient()
     {
-        return _client.get();
+        ThriftClientPtr conn;
+        _clientQueue->pop(conn);
+        return conn;
+    }
+
+    inline void release_tclient(ThriftClientPtr client)
+    {
+        _clientQueue->push(client);
     }
 
 public: // misc private function
     static inline thrift_fuse* get_tfuse_from_context()
     {
         return static_cast<thrift_fuse*>(fuse_get_context()->private_data);
-    }    
-    static inline void f2tHandle(fuse_file_info* fi,
+    }
+    static inline void fuse2thriftHandleInfo(fuse_file_info* fi,
         Fuse::FuseHandleInfo& handleInfo)
     {
         if (fi == nullptr) {
@@ -126,7 +156,7 @@ public: // misc private function
         if (stats.__isset.uid)
             st->st_uid = stats.uid;
     }
-    static inline void f2tContext(fuse_context* fuse_context, Fuse::FuseContext& context)
+    static inline void fuse2thriftContext(fuse_context* fuse_context, Fuse::FuseContext& context)
     {
         context.__set_gid(fuse_context->gid);
         context.__set_uid(fuse_context->uid);

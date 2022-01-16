@@ -96,7 +96,7 @@ struct FuseStat {
     5:optional i32 uid;
     6:optional i32 gid;
     7:optional i32 rdev;
-    8:optional i32 size;
+    8:optional i64 size;
     9:optional i32 blksize;
     10:optional i64 blocks;
     11:optional i32 accessTime;
@@ -182,7 +182,9 @@ enum StatusCode {
   FUSE_ERROREPIPE = 32; /* Broken pipe */
   FUSE_ERROREDOM = 33; /* Math argument out of domain of func */
   FUSE_ERRORERANGE = 34; /* Math result not representable */
+  FUSE_ENOTEMPTY = 39; /*Directory is not empty*/
   FUSE_ERRECANCELED = 158;
+  
 }
 
 struct FuseConnectionInfo {
@@ -320,7 +322,7 @@ service FuseService {
    * It's often easier to pretend that all files are owned by the user who mounted the filesystem, 
    * and to skip implementing this function.
    */
-   FileSystemResponse chown(1:string path, 2:i64 uid, 3:i64 gid, 4: FuseHandleInfo handleInfo, 5:FuseContext context);
+   FileSystemResponse chown(1:string path, 2:i32 uid, 3:i32 gid, 4: FuseHandleInfo handleInfo, 5:FuseContext context);
    
    /*
    * int(* 	truncate )(const char *, off_t, struct fuse_file_info *fi)
@@ -498,7 +500,7 @@ service FuseService {
    * however, I don't know if FUSE functions have to support them. 
    * This function isn't necessary but is nice to have in a fully functional filesystem.
    */
-   FileSystemResponse utimens(1:string path, 2:FuseTimeSpec timeSpec, 3: FuseHandleInfo info, 4:FuseContext context)
+   FileSystemResponse utimens(1:string path, 2:optional FuseTimeSpec timeSpec, 3: FuseHandleInfo info, 4:FuseContext context)
 
    /*
    * bmap(const char* path, size_t blocksize, uint64_t* blockno) 

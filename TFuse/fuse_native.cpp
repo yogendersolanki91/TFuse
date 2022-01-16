@@ -1,39 +1,85 @@
+/*
+ ***************************************************************************** 
+ * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
+ *
+ * Copyright (c) 2011 Yogender Solanki
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ */
 #include <FuseService.h>
 
-#include "Logger.h"
-#include "fuse_native.h"
-#include "thrift_client.h"
-#include "thrift_fuse.h"
+#include <Logger.h>
+#include <fuse_native.h>
+#include <thrift_client.h>
+#include <thrift_fuse.h>
 
+#include <chrono>
+
+using namespace std::chrono;
 using namespace Fuse;
 
-#define THRIFT_OP(c, func, ...)                                                          \
-    try {                                                                                \
-        if ((c) == nullptr) {                                                            \
-                                                                                         \
-        } else {                                                                         \
-            (c->GetStub()->func(__VA_ARGS__));                                           \
-        }                                                                                \
-    } catch (std::exception & ex) {                                                      \
-        resp.status = StatusCode::FUSE_ERRECANCELED;                                     \
-        LOG_ERROR << __FUNCTION__ << " Operation failed due to exception " << ex.what(); \
-        thrift_client::HandleException(ex);                                              \
+struct scope_exit {
+    scope_exit(std::function<void(void)> f)
+        : f_(f)
+    {
+    }
+    ~scope_exit(void) { f_(); }
+
+private:
+    std::function<void(void)> f_;
+};
+#define WARNING_CHANNEL_THRESHOLD 100
+
+#define THRIFT_OP(func, ...)                                                               \
+    try {                                                                                  \
+        auto start = high_resolution_clock::now();                                         \
+        auto client = thrift_fuse::get_tfuse_from_context()->get_tclient();                \
+        auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start); \
+        if (duration.count() > WARNING_CHANNEL_THRESHOLD) {                                \
+            LOG_WARNING                                                                    \
+                << "High latency to get client "                                           \
+                << duration.count() << " ms";                                              \
+        }                                                                                  \
+        scope_exit relaseChannel([client](void) {                                          \
+            thrift_fuse::get_tfuse_from_context()->release_tclient(client);                \
+        });                                                                                \
+        LOG_DEBUG << "Calling host " << " => [" << client->get_client_id() << "]"; \
+        client->GetStub()->func(__VA_ARGS__);                                              \
+    } catch (std::exception & ex) {                                                        \
+        resp.status = StatusCode::FUSE_ERRECANCELED;                                       \
+        LOG_ERROR << " Operation failed due to exception " << ex.what();   \
+        thrift_client::HandleException(ex);                                                \
     }
 
 int fuse_native::getattr(const char* path, fuse_stat* stbuf, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__ << " Path " << path;
     FileSystemResponse resp;
-    FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), getattr, resp, path, handle, context);
-    if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
+    FuseHandleInfo handle;
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
+
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(getattr, resp, std::string(path), handle, context);
+
+    if (resp.status == Fuse::StatusCode::FUSE_SUCCESS && resp.__isset.stats) {
         thrift_fuse::t2fFileStat(resp.stats, stbuf);
     } else {
-        LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
+        LOG_ERROR << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
     return resp.status;
 }
@@ -42,11 +88,11 @@ int fuse_native::readlink(const char* path, char* buf, size_t size)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseHandleInfo handle;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), readlink, resp, path, size, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(readlink, resp, path, size, context);
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         strncpy(buf, resp.linkPath.c_str(), size);
     } else {
@@ -59,11 +105,11 @@ int fuse_native::mknod(const char* path, fuse_mode_t mode, fuse_dev_t dev)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(
-        thrift_fuse::get_tfuse_from_context()->get_tclient(), mknod, resp, path, mode, dev, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(mknod, resp, path, mode, dev, context);
 
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
@@ -75,10 +121,11 @@ int fuse_native::mkdir(const char* path, fuse_mode_t mode)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), mkdir, resp, path, mode, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(mkdir, resp, path, mode, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -89,10 +136,11 @@ int fuse_native::unlink(const char* path)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), unlink, resp, path, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(unlink, resp, path, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -103,10 +151,11 @@ int fuse_native::rmdir(const char* path)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), rmdir, resp, path, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(rmdir, resp, path, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -119,9 +168,9 @@ int fuse_native::symlink(const char* dstpath, const char* srcpath)
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), symlink, resp, dstpath, srcpath, context);
+    THRIFT_OP(symlink, resp, dstpath, srcpath, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << srcpath << "Error " << resp.status;
     }
@@ -134,9 +183,9 @@ int fuse_native::rename(const char* oldpath, const char* newpath, unsigned int f
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), rename, resp, newpath, oldpath, flags, context);
+    THRIFT_OP(rename, resp, oldpath, newpath, flags, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << oldpath << "Error " << resp.status;
     }
@@ -149,9 +198,9 @@ int fuse_native::link(const char* srcpath, const char* dstpath)
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), link, resp, srcpath, dstpath, context);
+    THRIFT_OP(link, resp, srcpath, dstpath, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << srcpath << "Error " << resp.status;
     }
@@ -165,13 +214,14 @@ int fuse_native::chown(const char* path,
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), chown, resp, path, uid, gid, handle, context);
+    THRIFT_OP(chown, resp, path, uid, gid, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -182,14 +232,14 @@ int fuse_native::chmod(const char* path, fuse_mode_t mode, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(
-        thrift_fuse::get_tfuse_from_context()->get_tclient(), chmod, resp, path, mode, handle, context);
+    THRIFT_OP(chmod, resp, path, mode, handle, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
@@ -202,13 +252,14 @@ int fuse_native::truncate(const char* path, fuse_off_t size, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), truncate, resp, path, size, handle, context);
+    THRIFT_OP(truncate, resp, path, size, handle, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
@@ -223,9 +274,9 @@ int fuse_native::open(const char* path, fuse_file_info* fi)
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), open, resp, path, context);
+    THRIFT_OP(open, resp, path, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
@@ -242,13 +293,14 @@ int fuse_native::read(const char* path,
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), read, resp, path, size, off, handle, context);
+    THRIFT_OP(read, resp, path, size, off, handle, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         strncpy(buf, resp.data.c_str(), resp.data.size());
     } else {
@@ -265,13 +317,14 @@ int fuse_native::write(const char* path,
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), write, resp, path, off, buf, handle, context);
+    THRIFT_OP(write, resp, path, off, buf, handle, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         return static_cast<int>(resp.dataWritten);
     } else {
@@ -284,10 +337,11 @@ int fuse_native::statfs(const char* path, fuse_statvfs* stbuf)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), statfs, resp, path, context);
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(statfs, resp, path, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fStatFS(resp.statfs, stbuf);
     } else {
@@ -300,13 +354,14 @@ int fuse_native::flush(const char* path, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), flush, resp, path, handle, context);
+    THRIFT_OP(flush, resp, path, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -317,13 +372,14 @@ int fuse_native::release(const char* path, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), release, resp, path, handle, context);
+    THRIFT_OP(release, resp, path, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -359,8 +415,9 @@ int fuse_native::setxattr(const char* path,
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), setxattr, resp, path, name0, value, size, flags, context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(setxattr, resp, path, name0, value, size, flags, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -376,9 +433,9 @@ int fuse_native::getxattr(const char* path,
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), getxattr, resp, path, name0, context);
+    THRIFT_OP(getxattr, resp, path, name0, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         strncpy(value, resp.atrributeValue.c_str(), size);
         if (resp.atrributeValue.size() > size) {
@@ -407,9 +464,11 @@ int fuse_native::opendir(const char* path, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), opendir, resp, path, context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(opendir, resp, path, context);
     if (resp.status == StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(resp.info, fi);
     } else {
@@ -427,13 +486,14 @@ int fuse_native::readdir(const char* path,
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), readdir, resp, path, off, handle, context);
+    THRIFT_OP(readdir, resp, path, off, handle, context);
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         for (auto entry : resp.dirEntry) {
             fuse_stat statBuf;
@@ -452,12 +512,14 @@ int fuse_native::releasedir(const char* path, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), releasedir, resp, path, handle, context);
+    FuseHandleInfo handle;
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
+
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(releasedir, resp, path, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -470,16 +532,18 @@ int fuse_native::utimens(const char* path,
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+
     FuseTimeSpec timeSpec;
-    timeSpec.accessTime = tmsp[0].tv_nsec;
-    timeSpec.modificationTime = tmsp[0].tv_nsec;
+    timeSpec.accessTime = tmsp[0].tv_sec;
+    timeSpec.modificationTime = tmsp[0].tv_sec;
+
+    FuseHandleInfo handle;
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), utimens, resp, path, timeSpec, handle, context);
+    THRIFT_OP(utimens, resp, path, timeSpec, handle, context);
     if (resp.status != Fuse::StatusCode::FUSE_SUCCESS) {
         LOG_DEBUG << "Failed " << __FUNCTION__ << " Path " << path << "Error " << resp.status;
     }
@@ -490,12 +554,14 @@ int fuse_native::fsync(const char* path, int datasync, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
-    FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
-    FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), fsync, resp, path, datasync, handle, context);
+    FuseHandleInfo handle;
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
+
+    FuseContext context;
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
+
+    THRIFT_OP(fsync, resp, path, datasync, handle, context);
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(handle, fi);
     } else {
@@ -508,13 +574,14 @@ int fuse_native::fsyncdir(const char* path, int datasync, fuse_file_info* fi)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
     FileSystemResponse resp;
+
     FuseHandleInfo handle;
-    thrift_fuse::f2tHandle(fi, handle);
+    thrift_fuse::fuse2thriftHandleInfo(fi, handle);
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
-    THRIFT_OP(thrift_fuse::get_tfuse_from_context()->get_tclient(), fsyncdir, resp, path, datasync, handle, context);
+    THRIFT_OP(fsyncdir, resp, path, datasync, handle, context);
     if (resp.status == Fuse::StatusCode::FUSE_SUCCESS) {
         thrift_fuse::t2fHandle(handle, fi);
     } else {
@@ -529,21 +596,22 @@ int fuse_native::access(const char* path, int flag)
     FileSystemResponse resp;
 
     FuseContext context;
-    thrift_fuse::f2tContext(fuse_get_context(), context);
+    thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
 
     //THRIFT_OP(static_cast<FuseImpl*>(fuse_get_context()->private_data())->;, access, resp, path, static_cast<FuseAccessMode::type>(flag), context);
-    return resp.status;
+    return 0;
 }
 
 void fuse_native::destroy(void* fuse)
 {
     LOG_DEBUG << "Called " << __FUNCTION__;
+    auto fs = static_cast<thrift_fuse*>(fuse);
+
+    delete static_cast<thrift_fuse*>(fuse);
 }
 
 void* fuse_native::init(fuse_conn_info* conn, fuse_config* conf)
-{
-
-    //ToDO:: Connect
+{        
     conn->want |= (conn->capable & FUSE_CAP_READDIRPLUS);
     return thrift_fuse::get_tfuse_from_context();
 }

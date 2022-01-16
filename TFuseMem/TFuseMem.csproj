@@ -19,12 +19,17 @@
 
   <ItemGroup>
     <None Include="..\Fuse.thrift" Link="Fuse.thrift" />
-    <None Include="..\TFuse\config.ini" Link="config.ini" />
+    <None Include="..\TFuse\config.ini" Link="config.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ApacheThrift" Version="0.15.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
+    <PackageReference Include="PeanutButter.INI" Version="2.0.50" />
     <PackageReference Include="Serilog" Version="2.10.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="4.2.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="4.0.1" />
   </ItemGroup>
 

@@ -29,6 +29,7 @@
       <Filter>gen-cpp</Filter>
     </ClInclude>
     <ClInclude Include="fuse_native.h" />
+    <ClInclude Include="blocking_queue.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="config.ini" />
