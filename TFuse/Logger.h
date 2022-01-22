@@ -2,7 +2,7 @@
  ***************************************************************************** 
  * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
  *
- * Copyright (c) 2011 Yogender Solanki
+ * Copyright (c) 2022 Yogender Solanki
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -28,7 +28,7 @@
 #include <boost/log/utility/setup/file.hpp>
 #include <iostream>
 
-#define LOG_TRACE BOOST_LOG_TRIVIAL(trace) << __FUNCTION__ << " "
+#define LOG_TRACE BOOST_LOG_TRIVIAL(trace) << __FUNCTION__ << "/ "
 #define LOG_DEBUG BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << " "
 #define LOG_INFO BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " "
 #define LOG_WARNING BOOST_LOG_TRIVIAL(warning) << __FUNCTION__ << " "

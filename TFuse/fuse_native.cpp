@@ -2,7 +2,7 @@
  ***************************************************************************** 
  * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
  *
- * Copyright (c) 2011 Yogender Solanki
+ * Copyright (c) 2022 Yogender Solanki
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -328,12 +328,15 @@ int fuse_native::write(const char* path,
 
     FuseContext context;
     thrift_fuse::fuse2thriftContext(fuse_get_context(), context);
-
-    THRIFT_OP(write, resp, path, off, buf, handle, context);
-    if (resp.status == StatusCode::FUSE_SUCCESS) {
-        return static_cast<int>(resp.dataWritten);
+  //  LOG_INFO << "Write  " << path << " Offset " << off << " Size " << size;
+    
+    THRIFT_OP(write, resp, path, std::string(buf, size), off, size, handle, context);
+    
+    if (resp.status == StatusCode::FUSE_SUCCESS) {        
+    //   LOG_INFO << "Written  " << path << " Offset " << off << " Size " << size;
+       return static_cast<int>(resp.dataWritten);
     } else {
-        LOG_DEBUG << "Failed " << " Path " << path << "Error " << resp.status;
+        LOG_ERROR << "Failed " << " Path " << path << "Error " << resp.status;
     }
     return resp.dataWritten;
 }

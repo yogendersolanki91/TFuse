@@ -1,3 +1,28 @@
+/*
+ ***************************************************************************** 
+ * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
+ *
+ * Copyright (c) 2022 Yogender Solanki
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *****************************************************************************
+ */
+
 namespace cpp Fuse
 
 struct KeyValuePair {
@@ -350,7 +375,7 @@ service FuseService {
    * int(* 	write )(const char *, const char *, size_t, off_t, struct fuse_file_info *)
    * As for read above, except that it can't return 0.
    */
-   FileSystemResponse write(1:string path, 2:i64 offset, 3:binary buffer, 4: FuseHandleInfo handleInfo, 5:FuseContext context);
+   FileSystemResponse write(1:string path, 2:binary buffer, 3:i64 offset, 4:i32 size, 5: FuseHandleInfo handleInfo, 6:FuseContext context);
    
    /*
    * statfs(const char* path, struct statvfs* stbuf

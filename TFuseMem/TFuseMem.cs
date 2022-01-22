@@ -2,7 +2,7 @@
  ***************************************************************************** 
  * Author: Yogender Solanki <yogendersolanki91@gmail.com> 
  *
- * Copyright (c) 2011 Yogender Solanki
+ * Copyright (c) 2022 Yogender Solanki
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -18,43 +18,48 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************
  */
-using Serilog;
-using Serilog.Configuration;
-using Serilog.Core;
-using Serilog.Sinks.SystemConsole.Themes;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using TFuse;
-using static TFuse.InvocationContextEnricher;
-
 namespace TFuse
 {
+    using Serilog;
+    using System;
+    using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
 
-
-    class FuseFileOpenContext
+    internal class FuseFileOpenContext
     {
         public FuseHandleInfo Handle { get; set; }
+
         public MemNode Node { get; set; }
     }
 
-    class MemNode
+    internal class MemNode
     {
         public string Link { get; private set; }
+
         public string Name { get; set; }
+
         public int refCount;
-        MemoryStream dataStream;
-        ConcurrentDictionary<string, MemNode> Child { get; set; } = new ConcurrentDictionary<string, MemNode>();
+
+        internal MemoryStream dataStream;
+
+        internal ConcurrentDictionary<string, MemNode> Child { get; set; } = new ConcurrentDictionary<string, MemNode>();
+
         public FuseStat FileStat { get; private set; }
 
-        public bool IsDirectory { get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFDIR; } }
-        public bool IsLink { get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFLNK; } } 
-        public int DataSize => (int)(dataStream != null ? dataStream.Length : 0); 
-        
+        public bool IsDirectory
+        {
+            get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFDIR; }
+        }
+
+        public bool IsLink
+        {
+            get { return (FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) == FuseConstants.FUSE_MODE_MASK_IFLNK; }
+        }
+
+        public int DataSize => (int)(dataStream != null ? dataStream.Length : 0);
 
         public MemNode(string name, FuseStat stat)
         {
@@ -80,7 +85,7 @@ namespace TFuse
 
         public void Resize(long size)
         {
-            dataStream.Capacity = (int)size;
+            dataStream.SetLength(size);
             FileStat.Size = size;
         }
 
@@ -88,27 +93,29 @@ namespace TFuse
         {
             if (data != null)
             {
-                lock(data)
+                lock (data)
                 {
-                    Log.Logger.Information($"Reading at {offset} for {size} byte Buffer {data.Length}");
+                    Log.Logger.Debug($"Reading at {offset} for {size} byte Buffer {data.Length}");
                     dataStream.Seek(offset, SeekOrigin.Begin);
                     dataStream.Read(data, 0, data.Length);
                     return size;
                 }
-            }            
-            return 0;            
+            }
+            return 0;
         }
 
-        public int Write(byte[] data, int offset, int size)
+        public int Write(byte[] data, int offset)
         {
             if (data != null)
             {
                 lock (data)
                 {
-                    Log.Logger.Information($"Writing at {offset} for {size} byte Buffer {data.Length}");
+
+
                     dataStream.Seek(offset, SeekOrigin.Begin);
                     dataStream.Write(data, 0, data.Length);
-                    return size;
+                    FileStat.Size = dataStream.Length;
+                    return data.Length;
                 }
             }
             return 0;
@@ -165,7 +172,7 @@ namespace TFuse
             }
         }
 
-        static int GetUnixTime(DateTime time)
+        internal static int GetUnixTime(DateTime time)
         {
             return (int)((DateTimeOffset)time).ToUnixTimeSeconds();
         }
@@ -202,7 +209,6 @@ namespace TFuse
             };
         }
 
-
         public static FuseStat CreateSymLinkStat(long inode)
         {
             return new FuseStat()
@@ -220,17 +226,17 @@ namespace TFuse
         }
     }
 
-
-
-    class TFuseMem : FuseService.IAsync
+    internal class TFuseMem : FuseService.IAsync
     {
         private long HandleIdx;
-        private ConcurrentDictionary<long, FuseFileOpenContext> Handles;
-        private FuseStatFS FileSystemStats;
-        readonly MemNode Root;
-        private long InodeCount;
-        
 
+        private ConcurrentDictionary<long, FuseFileOpenContext> Handles;
+
+        private FuseStatFS FileSystemStats;
+
+        internal readonly MemNode Root;
+
+        private long InodeCount;
 
         private MemNode GetNode(string path, long handle)
         {
@@ -242,9 +248,9 @@ namespace TFuse
             else
             {
                 return GetNode(path);
-            }            
+            }
         }
-        
+
         private MemNode GetNode(string path)
         {
             path.Trim(new char[] { '/', '\\' });
@@ -258,11 +264,11 @@ namespace TFuse
                 {
                     break;
                 }
-            }            
+            }
             return current;
         }
 
-        static int GetUnixTime(DateTime time)
+        internal static int GetUnixTime(DateTime time)
         {
             return (int)((DateTimeOffset)time).ToUnixTimeSeconds();
         }
@@ -286,7 +292,7 @@ namespace TFuse
                 Favail = 10
             };
 
-   
+
 
             Log.Debug("Initiailzing file system interface");
 
@@ -302,7 +308,6 @@ namespace TFuse
                 Ino = Interlocked.Increment(ref InodeCount),
                 Rdev = 0,
             });
-
         }
 
         public Task<FileSystemResponse> accessAsync(string path, FuseAccessMode accessMask, FuseContext context, CancellationToken cancellationToken = default)
@@ -323,7 +328,7 @@ namespace TFuse
         {
             Log.Debug($"Request arrived ");
 
-            var node = GetNode(path,handleInfo.Fh);            
+            var node = GetNode(path, handleInfo.Fh);
             if (node == null)
             {
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_ERRORENOENT });
@@ -332,17 +337,18 @@ namespace TFuse
             {
                 node.FileStat.Mode = (node.FileStat.Mode & FuseConstants.FUSE_MODE_MASK_IFMT) | (mode & 0xFFF);
                 node.FileStat.ChangeTime = GetUnixTime(DateTime.Now);
-                return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS});
-            }            
+                return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
+            }
         }
 
         public Task<FileSystemResponse> chownAsync(string path, int uid, int gid, FuseHandleInfo handleInfo, FuseContext context, CancellationToken cancellationToken = default)
         {
-            var node =  GetNode(path, handleInfo.Fh);
+            var node = GetNode(path, handleInfo.Fh);
             if (node == null)
             {
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_ERRORENOENT });
-            } else
+            }
+            else
             {
                 if (uid != -1)
                     node.FileStat.Uid = uid;
@@ -350,7 +356,6 @@ namespace TFuse
                     node.FileStat.Gid = gid;
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
             }
-
         }
 
         public Task<FileSystemResponse> createAsync(string path, int mode, FuseContext context, CancellationToken cancellationToken = default)
@@ -359,9 +364,10 @@ namespace TFuse
             if ((mode & FuseConstants.FUSE_MODE_MASK_IFMT) != FuseConstants.FUSE_MODE_MASK_IFDIR)
             {
                 return mknodAsync(path, mode, 0, context, cancellationToken);
-            } else
+            }
+            else
             {
-                return mkdirAsync(path, mode,context, cancellationToken);
+                return mkdirAsync(path, mode, context, cancellationToken);
             }
         }
 
@@ -391,7 +397,7 @@ namespace TFuse
 
         public Task<FileSystemResponse> getattrAsync(string path, FuseHandleInfo handleInfo, FuseContext context, CancellationToken cancellationToken = default)
         {
-            
+
             Log.Debug($"Request arrived ");
             var node = GetNode(path, handleInfo.Fh);
             if (node == null)
@@ -399,7 +405,7 @@ namespace TFuse
             else
             {
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS, Stats = node.FileStat });
-            } 
+            }
         }
 
         public Task<FileSystemResponse> getxattrAsync(string path, string name, FuseContext context, CancellationToken cancellationToken = default)
@@ -501,13 +507,11 @@ namespace TFuse
             Log.Debug($"Creating file {name} in {dir}");
             var newNode = new MemNode(name, MemNode.CreateNewFileStat(Interlocked.Increment(ref InodeCount)));
             newNode.FileStat.Uid = context.Uid;
-            newNode.FileStat.Gid = context.Gid;            
+            newNode.FileStat.Gid = context.Gid;
             node.AddChild(name, newNode);
-            
+
             return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
         }
-
-
 
         public Task<FileSystemResponse> openAsync(string path, FuseContext context, CancellationToken cancellationToken = default)
         {
@@ -549,7 +553,6 @@ namespace TFuse
                     });
                 }
             }
-
         }
 
         public Task<FileSystemResponse> opendirAsync(string path, FuseContext context, CancellationToken cancellationToken = default)
@@ -610,7 +613,7 @@ namespace TFuse
                 {
                     return Task.FromResult(new FileSystemResponse()
                     {
-                        Status = StatusCode.FUSE_SUCCESS,                        
+                        Status = StatusCode.FUSE_SUCCESS,
                     });
                 }
                 byte[] data = new byte[Math.Min(size, node.DataSize - offset)];
@@ -698,7 +701,6 @@ namespace TFuse
             {
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_ERROREINVAL });
             }
-
         }
 
         public Task<FileSystemResponse> releasedirAsync(string path, FuseHandleInfo handleInfo, FuseContext context, CancellationToken cancellationToken = default)
@@ -894,7 +896,7 @@ namespace TFuse
             }
             else
             {
-                Log.Information($"Removing node {path}");
+                //   Log.Information($"Removing node {path}");
                 var parent = GetNode(Path.GetDirectoryName(path));
                 if (parent.RemoveChild(node.Name, out node))
                 {
@@ -930,10 +932,9 @@ namespace TFuse
                 }
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS });
             }
-
         }
 
-        public Task<FileSystemResponse> writeAsync(string path, long offset, byte[] buffer, FuseHandleInfo handleInfo, FuseContext context, CancellationToken cancellationToken = default)
+        public Task<FileSystemResponse> writeAsync(string path, byte[] buffer, long offset, int size, FuseHandleInfo handleInfo, FuseContext context, CancellationToken cancellationToken = default)
         {
             var node = GetNode(path);
             if (node == null)
@@ -942,7 +943,7 @@ namespace TFuse
             }
             else
             {
-                node.Write(buffer, (int)offset, buffer.Length);
+                node.Write(buffer, (int)offset);
                 return Task.FromResult(new FileSystemResponse() { Status = StatusCode.FUSE_SUCCESS, DataWritten = buffer.Length });
             }
         }
