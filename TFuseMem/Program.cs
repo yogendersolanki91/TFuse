@@ -87,7 +87,7 @@ namespace TFuse
 
                 if (tfuseConfig[ConfigType.THRIFT].ContainsKey(ThriftConfig.PROTOCOL))
                 {
-                    wrapper = tfuseConfig[ConfigType.THRIFT][ThriftConfig.PROTOCOL];
+                    protocol = tfuseConfig[ConfigType.THRIFT][ThriftConfig.PROTOCOL];
                 }
             }
 
